@@ -1,0 +1,195 @@
+<div class="container-fluid">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-content">
+      <button class="back-button" (click)="goBack()">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back to Rotations
+      </button>
+      
+      <div class="header-title">
+        <h1>Case Logs</h1>
+        <p class="subtitle" *ngIf="rotation">
+          {{ rotation.discipline }} - {{ rotation.rotation }}
+        </p>
+      </div>
+
+      <button class="add-button" (click)="addNewCaseLog()">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Add Case Log
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-container">
+    <div class="row">
+      <div class="col-md-4">
+        <div class="stat-card total">
+          <div class="stat-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div class="stat-content">
+            <h3>{{ caseLogs.length }}</h3>
+            <p>Total Case Logs</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-4">
+        <div class="stat-card approved">
+          <div class="stat-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div class="stat-content">
+            <h3>{{ getApprovedCount() }}</h3>
+            <p>Approved</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-4">
+        <div class="stat-card pending">
+          <div class="stat-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div class="stat-content">
+            <h3>{{ getPendingCount() }}</h3>
+            <p>Pending Review</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Buttons -->
+  <div class="filter-container">
+    <button 
+      class="filter-btn" 
+      [class.active]="filterStatus === 'all'"
+      (click)="filterLogs('all')">
+      All ({{ caseLogs.length }})
+    </button>
+    <button 
+      class="filter-btn" 
+      [class.active]="filterStatus === 'approved'"
+      (click)="filterLogs('approved')">
+      Approved ({{ getApprovedCount() }})
+    </button>
+    <button 
+      class="filter-btn" 
+      [class.active]="filterStatus === 'pending'"
+      (click)="filterLogs('pending')">
+      Pending ({{ getPendingCount() }})
+    </button>
+  </div>
+
+  <!-- Case Logs List -->
+  <div class="logs-container">
+    <div class="row">
+      <div class="col-12" *ngFor="let log of filteredLogs">
+        <div class="case-log-card">
+          <div class="log-header">
+            <div class="log-title">
+              <h3>Case Log #{{ log.id }}</h3>
+              <span class="log-date">{{ log.date }}</span>
+            </div>
+            <span class="status-badge" [class.approved]="log.approved" [class.pending]="!log.approved">
+              <svg *ngIf="log.approved" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              <svg *ngIf="!log.approved" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3" />
+              </svg>
+              {{ log.approved ? 'Approved' : 'Pending Review' }}
+            </span>
+          </div>
+
+          <div class="log-body">
+            <div class="row">
+              <div class="col-md-3">
+                <div class="log-field">
+                  <label>Patient ID</label>
+                  <p>{{ log.patientId }}</p>
+                </div>
+              </div>
+              
+              <div class="col-md-3">
+                <div class="log-field">
+                  <label>Age / Gender</label>
+                  <p>{{ log.age }} years / {{ log.gender }}</p>
+                </div>
+              </div>
+              
+              <div class="col-md-3">
+                <div class="log-field">
+                  <label>Clinical Setting</label>
+                  <p>{{ log.clinicalSetting }}</p>
+                </div>
+              </div>
+              
+              <div class="col-md-3">
+                <div class="log-field">
+                  <label>Submitted</label>
+                  <p>{{ log.submittedDate }}</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="log-field full-width">
+              <label>Diagnosis</label>
+              <p>{{ log.diagnosis }}</p>
+            </div>
+
+            <div class="log-field full-width">
+              <label>Procedures</label>
+              <p>{{ log.procedures }}</p>
+            </div>
+          </div>
+
+          <div class="log-footer">
+            <button class="btn btn-outline" (click)="viewCaseLog(log.id)">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              View Details
+            </button>
+            <button class="btn btn-primary" (click)="editCaseLog(log.id)">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Edit
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div class="col-12" *ngIf="filteredLogs.length === 0">
+        <div class="empty-state">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <h3>No case logs found</h3>
+          <p *ngIf="filterStatus === 'all'">Start by adding your first case log</p>
+          <p *ngIf="filterStatus === 'approved'">No approved case logs yet</p>
+          <p *ngIf="filterStatus === 'pending'">No pending case logs</p>
+          <button class="btn btn-primary" (click)="addNewCaseLog()">
+            Add Case Log
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
