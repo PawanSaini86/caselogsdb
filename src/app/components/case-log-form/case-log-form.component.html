@@ -1,7 +1,19 @@
-<div class="container mt-5">
-  <div class="row">
-    <div class="col-lg-10 offset-lg-1">
-      <h1 class="text-center mb-4">Clinical Case Log Form</h1>
+<div class="case-log-container">
+  <!-- Header Section -->
+  <div class="case-log-header">
+    <div *ngIf="userType === 'medical'">
+      <span class="user-type-badge">Medical Student</span>
+      <h1 class="case-log-title">Clinical Case Log Form</h1>
+    </div>
+    <div *ngIf="userType === 'vet'">
+      <span class="user-type-badge">Veterinary Student</span>
+      <h1 class="case-log-title">Veterinary Case Log Form</h1>
+    </div>
+  </div>
+
+  <!-- Form Card -->
+  <div class="case-log-card">
+    <div class="formio-container">
       <div #formioContainer></div>
     </div>
   </div>

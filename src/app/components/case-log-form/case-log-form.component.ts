@@ -806,6 +806,46 @@ export class CaseLogFormComponent implements OnInit, AfterViewInit {
               validate: { required: true }
             }
           ]
+        },
+        {
+          title: "Personal Reflection",
+          type: "panel",
+          key: "personalReflection",
+          components: [
+            {
+              label: "What did you learn from this case?",
+              type: "textarea",
+              key: "learningPoints",
+              input: true,
+              rows: 5,
+              placeholder: "Reflect on the key learning points from this clinical encounter...",
+              validate: { required: true }
+            },
+            {
+              label: "What would you do differently next time?",
+              type: "textarea",
+              key: "improvements",
+              input: true,
+              rows: 4,
+              placeholder: "Consider what you might approach differently in a similar case..."
+            },
+            {
+              label: "What questions remain?",
+              type: "textarea",
+              key: "questions",
+              input: true,
+              rows: 3,
+              placeholder: "Note any questions or topics you'd like to explore further..."
+            },
+            {
+              label: "Additional Notes",
+              type: "textarea",
+              key: "additionalNotes",
+              input: true,
+              rows: 3,
+              placeholder: "Any other reflections or observations..."
+            }
+          ]
         }
       ]
     };
