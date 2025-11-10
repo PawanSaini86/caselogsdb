@@ -1,401 +1,34 @@
-import { Component, AfterViewInit, ElementRef, ViewChild, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+import { environment } from '../../../environments/environment';
 
 declare var Formio: any;
 
 @Component({
   selector: 'app-case-log-form',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
   templateUrl: './case-log-form.component.html',
   styleUrls: ['./case-log-form.component.css']
 })
-export class CaseLogFormComponent implements OnInit, AfterViewInit {
-  @ViewChild('formioContainer', { static: false }) formioContainer!: ElementRef;
-  rotationId: string | null = null;
-  
-  // User type - in real app, get from authentication service
-  userType: 'vet' | 'medical' = 'medical';
+export class CaseLogFormComponent implements OnInit {
+  rotationId!: number;
+  studentId: number = environment.studentId || 522;
+  formType: 'medical' | 'veterinary' = 'veterinary';
 
   constructor(
+    private http: HttpClient,
     private route: ActivatedRoute,
     private router: Router
   ) {}
 
   ngOnInit() {
-    this.rotationId = this.route.snapshot.paramMap.get('rotationId');
-    
-    // Check localStorage for user type
-    const storedUserType = localStorage.getItem('userType');
-    if (storedUserType === 'vet' || storedUserType === 'medical') {
-      this.userType = storedUserType as 'vet' | 'medical';
-    }
-    
-    // Check URL parameter
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('userType') === 'vet') {
-      this.userType = 'vet';
-    }
-  }
-
-  ngAfterViewInit() {
-    setTimeout(() => {
-      if (this.userType === 'vet') {
-        this.createVeterinaryForm();
-      } else {
-        this.createMedicalForm();
-      }
-    }, 500);
-  }
-
-  goBack() {
-    this.router.navigate(['/']);
-  }
-
-  // Medical Student Form - UPDATED with new Personal Reflection section
-  createMedicalForm() {
-    if (typeof Formio === 'undefined') {
-      console.error('Formio is not loaded');
-      return;
-    }
-
-    const formDefinition = {
-      display: "wizard",
-      components: [
-        {
-          title: "Patient Demographics",
-          type: "panel",
-          key: "patientDemographics",
-          components: [
-            {
-              label: "Patient ID",
-              type: "textfield",
-              key: "patientId",
-              input: true,
-              placeholder: "Enter Patient ID",
-              validate: { required: true }
-            },
-            {
-              label: "Age",
-              type: "number",
-              key: "age",
-              input: true,
-              placeholder: "Enter Age",
-              validate: { required: true, min: 0, max: 150 }
-            },
-            {
-              label: "Gender",
-              type: "select",
-              key: "gender",
-              input: true,
-              data: {
-                values: [
-                  { label: "Male", value: "male" },
-                  { label: "Female", value: "female" },
-                  { label: "Other", value: "other" }
-                ]
-              },
-              validate: { required: true }
-            },
-            {
-              label: "Race/Ethnicity",
-              type: "select",
-              key: "raceEthnicity",
-              input: true,
-              data: {
-                values: [
-                  { label: "Asian", value: "asian" },
-                  { label: "Black or African American", value: "black" },
-                  { label: "Hispanic or Latino", value: "hispanic" },
-                  { label: "White", value: "white" },
-                  { label: "Native American or Alaska Native", value: "native" },
-                  { label: "Native Hawaiian or Pacific Islander", value: "pacific" },
-                  { label: "Two or More Races", value: "multiple" },
-                  { label: "Other", value: "other" },
-                  { label: "Prefer not to answer", value: "decline" }
-                ]
-              },
-              validate: { required: true }
-            },
-            {
-              label: "Primary Language",
-              type: "textfield",
-              key: "primaryLanguage",
-              input: true,
-              placeholder: "Enter Language",
-              validate: { required: true }
-            },
-            {
-              label: "Insurance Type",
-              type: "select",
-              key: "insuranceType",
-              input: true,
-              data: {
-                values: [
-                  { label: "Private/Commercial", value: "private" },
-                  { label: "Medicare", value: "medicare" },
-                  { label: "Medicaid", value: "medicaid" },
-                  { label: "Military/VA", value: "military" },
-                  { label: "Self-Pay/Uninsured", value: "selfpay" },
-                  { label: "Other", value: "other" }
-                ]
-              },
-              validate: { required: true }
-            }
-          ]
-        },
-        {
-          title: "Setting Type",
-          type: "panel",
-          key: "settingType",
-          components: [
-            {
-              label: "Clinical Setting",
-              type: "select",
-              key: "clinicalSetting",
-              input: true,
-              data: {
-                values: [
-                  { label: "Inpatient", value: "inpatient" },
-                  { label: "Outpatient", value: "outpatient" },
-                  { label: "Emergency Department", value: "emergency" },
-                  { label: "Operating Room", value: "or" },
-                  { label: "Intensive Care Unit", value: "icu" },
-                  { label: "Clinic", value: "clinic" },
-                  { label: "Community Health Center", value: "community" },
-                  { label: "Other", value: "other" }
-                ]
-              },
-              validate: { required: true }
-            },
-            {
-              label: "Location/Facility Name",
-              type: "textfield",
-              key: "location",
-              input: true,
-              placeholder: "Enter facility or location name",
-              validate: { required: true }
-            },
-            {
-              label: "Date of Encounter",
-              type: "datetime",
-              key: "encounterDate",
-              input: true,
-              format: "yyyy-MM-dd",
-              enableTime: false,
-              validate: { required: true }
-            },
-            {
-              label: "Duration (minutes)",
-              type: "number",
-              key: "duration",
-              input: true,
-              placeholder: "Enter duration in minutes",
-              validate: { min: 1 }
-            }
-          ]
-        },
-        {
-          title: "Reasons for Visit",
-          type: "panel",
-          key: "reasonsForVisit",
-          components: [
-            {
-              label: "Chief Complaint",
-              type: "textarea",
-              key: "chiefComplaint",
-              input: true,
-              rows: 3,
-              placeholder: "Enter the patient's chief complaint",
-              validate: { required: true }
-            },
-            {
-              label: "History of Present Illness",
-              type: "textarea",
-              key: "historyPresentIllness",
-              input: true,
-              rows: 5,
-              placeholder: "Describe the history of present illness",
-              validate: { required: true }
-            },
-            {
-              label: "Relevant Past Medical History",
-              type: "textarea",
-              key: "pastMedicalHistory",
-              input: true,
-              rows: 4,
-              placeholder: "List relevant past medical history"
-            },
-            {
-              label: "Current Medications",
-              type: "textarea",
-              key: "medications",
-              input: true,
-              rows: 3,
-              placeholder: "List current medications"
-            }
-          ]
-        },
-        {
-          title: "Diagnosis",
-          type: "panel",
-          key: "diagnosis",
-          components: [
-            {
-              label: "Primary Diagnosis",
-              type: "textfield",
-              key: "primaryDiagnosis",
-              input: true,
-              placeholder: "Enter primary diagnosis",
-              validate: { required: true }
-            },
-            {
-              label: "Primary ICD-10 Code",
-              type: "textfield",
-              key: "primaryIcd10Code",
-              input: true,
-              placeholder: "Enter ICD-10 code (e.g., I10)"
-            },
-            {
-              label: "Secondary Diagnoses",
-              type: "textarea",
-              key: "secondaryDiagnoses",
-              input: true,
-              rows: 3,
-              placeholder: "List any secondary diagnoses (one per line)"
-            },
-            {
-              label: "Differential Diagnoses Considered",
-              type: "textarea",
-              key: "differentialDiagnoses",
-              input: true,
-              rows: 3,
-              placeholder: "List differential diagnoses that were considered"
-            },
-            {
-              label: "Assessment & Clinical Reasoning",
-              type: "textarea",
-              key: "clinicalReasoning",
-              input: true,
-              rows: 5,
-              placeholder: "Describe your clinical reasoning and assessment",
-              validate: { required: true }
-            }
-          ]
-        },
-        {
-          title: "Procedures",
-          type: "panel",
-          key: "procedures",
-          components: [
-            {
-              label: "Procedures Performed/Observed",
-              type: "textarea",
-              key: "proceduresPerformed",
-              input: true,
-              rows: 4,
-              placeholder: "List all procedures (indicate if performed, assisted, or observed)",
-              validate: { required: true }
-            },
-            {
-              label: "CPT Codes",
-              type: "textfield",
-              key: "cptCodes",
-              input: true,
-              placeholder: "Enter relevant CPT codes (comma separated)"
-            },
-            {
-              label: "Diagnostic Tests Ordered",
-              type: "textarea",
-              key: "diagnosticTests",
-              input: true,
-              rows: 3,
-              placeholder: "List any diagnostic tests ordered (labs, imaging, etc.)"
-            },
-            {
-              label: "Test Results Summary",
-              type: "textarea",
-              key: "testResults",
-              input: true,
-              rows: 3,
-              placeholder: "Summarize relevant test results"
-            },
-            {
-              label: "Treatment Plan",
-              type: "textarea",
-              key: "treatmentPlan",
-              input: true,
-              rows: 4,
-              placeholder: "Describe the treatment plan",
-              validate: { required: true }
-            }
-          ]
-        },
-        {
-          title: "Competencies",
-          type: "panel",
-          key: "competencies",
-          components: [
-            {
-              label: "Student Role in Care",
-              type: "select",
-              key: "studentRole",
-              input: true,
-              data: {
-                values: [
-                  { label: "Primary (Led patient care)", value: "primary" },
-                  { label: "Active Participant", value: "active" },
-                  { label: "Observer", value: "observer" }
-                ]
-              },
-              validate: { required: true }
-            },
-            {
-              label: "Core Competencies Demonstrated",
-              type: "selectboxes",
-              key: "competencies",
-              input: true,
-              values: [
-                { label: "Patient Care", value: "patientCare" },
-                { label: "Medical Knowledge", value: "medicalKnowledge" },
-                { label: "Practice-Based Learning", value: "practiceLearning" },
-                { label: "Interpersonal & Communication Skills", value: "communication" },
-                { label: "Professionalism", value: "professionalism" },
-                { label: "Systems-Based Practice", value: "systemsPractice" }
-              ]
-            },
-            {
-              label: "Supervising Physician",
-              type: "textfield",
-              key: "supervisingPhysician",
-              input: true,
-              placeholder: "Enter name of supervising physician",
-              validate: { required: true }
-            },
-            {
-              label: "Additional Notes",
-              type: "textarea",
-              key: "additionalNotes",
-              input: true,
-              rows: 3,
-              placeholder: "Any additional notes or comments"
-            }
-          ]
-        }
-      ]
-    };
-
-    Formio.createForm(this.formioContainer.nativeElement, formDefinition).then((form: any) => {
-      form.on('submit', (submission: any) => {
-        console.log('Medical Case Log Submitted:', submission);
-        alert('Medical Case Log Submitted Successfully!');
-      });
+    // Get rotation ID from route
+    this.route.params.subscribe(params => {
+      this.rotationId = +params['rotationId'];
+      this.createVeterinaryForm();
     });
   }
 
-  // Veterinary Student Form - Keep existing
   createVeterinaryForm() {
     if (typeof Formio === 'undefined') {
       console.error('Formio is not loaded');
@@ -556,34 +189,15 @@ export class CaseLogFormComponent implements OnInit, AfterViewInit {
               ]
             },
             {
-              label: "If hospitalized patient, was the patient discharged today?",
-              type: "checkbox",
-              key: "isDischargedToday",
-              input: true
-            },
-            {
-              label: "If discharged today, how many days was the patient hospitalized?",
-              type: "number",
-              key: "daysHospitalized",
-              input: true,
-              placeholder: "Enter number of days",
-              conditional: {
-                show: true,
-                when: "isDischargedToday",
-                eq: true
-              }
-            },
-            {
               label: "Species/Patient Details and/or Description of Activities",
               type: "textarea",
               key: "description",
               input: true,
               rows: 10,
-              placeholder: "Enter detailed description of the case, patient details, and activities performed...",
+              placeholder: "Enter detailed description...",
               validate: {
                 maxLength: 4000
-              },
-              description: "4000 characters maximum"
+              }
             }
           ]
         },
@@ -615,20 +229,6 @@ export class CaseLogFormComponent implements OnInit, AfterViewInit {
                         ]
                       },
                       validate: { required: true }
-                    },
-                    {
-                      label: "Diagnosis 2",
-                      type: "select",
-                      key: "diagnosis2",
-                      input: true,
-                      searchEnabled: true,
-                      data: {
-                        values: [
-                          { label: "- No clinical problem", value: "no_clinical_problem" },
-                          { label: "Allergic dermatitis", value: "allergic_dermatitis" },
-                          { label: "Anemia", value: "anemia" }
-                        ]
-                      }
                     }
                   ],
                   width: 6
@@ -647,32 +247,11 @@ export class CaseLogFormComponent implements OnInit, AfterViewInit {
                           { label: "Differential", value: "differential" }
                         ]
                       }
-                    },
-                    {
-                      label: "Type 2",
-                      type: "select",
-                      key: "type2",
-                      input: true,
-                      data: {
-                        values: [
-                          { label: "Definitive", value: "definitive" },
-                          { label: "Tentative", value: "tentative" },
-                          { label: "Differential", value: "differential" }
-                        ]
-                      }
                     }
                   ],
                   width: 6
                 }
               ]
-            },
-            {
-              label: "Diagnosis Description/Notes",
-              type: "textarea",
-              key: "diagnosisNotes",
-              input: true,
-              rows: 3,
-              placeholder: "Enter additional diagnosis information or notes"
             }
           ]
         },
@@ -682,51 +261,18 @@ export class CaseLogFormComponent implements OnInit, AfterViewInit {
           key: "procedures",
           components: [
             {
-              label: "Procedures: Select the procedures for this case",
-              type: "content",
-              key: "proceduresHeader",
-              html: "<h3>Procedures: Select the procedures for this case</h3>"
-            },
-            {
-              type: "columns",
-              columns: [
-                {
-                  components: [
-                    {
-                      label: "Procedure 1",
-                      type: "select",
-                      key: "procedure1",
-                      input: true,
-                      searchEnabled: true,
-                      data: {
-                        values: [
-                          { label: "- Physical exam", value: "physical_exam" },
-                          { label: "Abdominal procedure", value: "abdominal_procedure" }
-                        ]
-                      },
-                      validate: { required: true }
-                    }
-                  ],
-                  width: 6
-                },
-                {
-                  components: [
-                    {
-                      label: "Level 1",
-                      type: "select",
-                      key: "level1",
-                      input: true,
-                      data: {
-                        values: [
-                          { label: "Observed", value: "observed" },
-                          { label: "Performed with Assistance", value: "performed_with_assistance" }
-                        ]
-                      }
-                    }
-                  ],
-                  width: 6
-                }
-              ]
+              label: "Procedure 1",
+              type: "select",
+              key: "procedure1",
+              input: true,
+              searchEnabled: true,
+              data: {
+                values: [
+                  { label: "- Physical exam", value: "physical_exam" },
+                  { label: "Abdominal procedure", value: "abdominal_procedure" }
+                ]
+              },
+              validate: { required: true }
             }
           ]
         },
@@ -740,17 +286,15 @@ export class CaseLogFormComponent implements OnInit, AfterViewInit {
               type: "select",
               key: "clinicalCompetencyEntrustment",
               input: true,
-              searchEnabled: true,
               data: {
                 values: [
-                  { label: "CC01 - Evaluate patient behavior and temperament", value: "cc01" }
+                  { label: "CC01 - Evaluate patient behavior", value: "cc01" }
                 ]
-              },
-              validate: { required: true }
+              }
             }
           ]
         },
-                {
+        {
           title: "Personal Reflection",
           type: "panel",
           key: "personalReflection",
@@ -760,61 +304,142 @@ export class CaseLogFormComponent implements OnInit, AfterViewInit {
               type: "textarea",
               key: "contextOfReflection",
               input: true,
-              rows: 3,
-              placeholder: "Enter context of your personal reflection...",
-              validate: {
-                maxLength: 4000
-              },
-              description: "4000 characters maximum"
+              rows: 3
             },
             {
-              label: "Why did you choose this particular case, what events occurred, and how did your thoughts, emotions, and overall reactions develop and change as the situation progressed?",
+              label: "Personal Reactions and Feelings",
               type: "textarea",
               key: "personalReactionsAndFeelings",
               input: true,
               rows: 3,
-              placeholder: "Enter your personal reactions and feelings...",
-              validate: {
-                required: true,
-                maxLength: 4000
-              },
-              description: "4000 characters maximum"
+              validate: { required: true }
             },
             {
-              label: "How would you evaluate your performance as a student doctor, including the knowledge and skills you applied, the key takeaways from the experience, the areas that require further development, and at least two learning issues you identified?",
+              label: "Performance Evaluation",
               type: "textarea",
               key: "performanceEvaluation",
               input: true,
               rows: 3,
-              placeholder: "Enter your performance evaluation and analysis...",
-              validate: {
-                required: true,
-                maxLength: 4000
-              },
-              description: "4000 characters maximum"
+              validate: { required: true }
             },
             {
-              label: "What conclusions can you draw about your performance, how does it compare to that of a new graduate, what key knowledge and skills gained from this case can be applied to future situations, and what specific steps will you take to enhance your performance?",
+              label: "Action Plan for Improvement",
               type: "textarea",
               key: "actionPlanForImprovement",
               input: true,
               rows: 3,
-              placeholder: "Enter your action plan for improvement...",
-              validate: {
-                required: true,
-                maxLength: 4000
-              },
-              description: "4000 characters maximum"
+              validate: { required: true }
             }
           ]
         }
       ]
     };
-    Formio.createForm(this.formioContainer.nativeElement, formDefinition).then((form: any) => {
-      form.on('submit', (submission: any) => {
-        console.log('Veterinary Case Log Submitted:', submission);
-        alert('Veterinary Case Log Submitted Successfully!');
+
+    // Create the form
+    Formio.createForm(document.getElementById('formio'), formDefinition)
+      .then((form: any) => {
+        console.log('Veterinary form created successfully');
+        
+        // ========================================
+        // HANDLE FORM SUBMISSION - SAVE TO DATABASE
+        // ========================================
+        form.on('submit', (submission: any) => {
+          console.log('Form submitted:', submission);
+          this.saveCaseLogToDatabase(submission);
+        });
+      })
+      .catch((error: any) => {
+        console.error('Error creating form:', error);
       });
-    });
+  }
+
+  /**
+   * Save the complete form submission to the database
+   * Everything goes into CASE_DATA as JSON
+   */
+  saveCaseLogToDatabase(formSubmission: any) {
+    // Show loading indicator
+    console.log('Saving case log to database...');
+
+    // Prepare case log object
+    const caseLog = {
+      // Basic fields for quick querying
+      rotationId: this.rotationId,
+      studentId: this.studentId,
+      caseDate: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD
+      
+      // Extract key fields for database columns (for easy filtering/searching)
+      diagnosis: formSubmission.data.diagnosis1 || 'Not specified',
+      procedures: formSubmission.data.procedure1 || 'Not specified',
+      
+      // Save EVERYTHING in CASE_DATA as JSON
+      caseData: {
+        // Metadata
+        formType: 'veterinary',
+        formVersion: '1.0',
+        submittedAt: new Date().toISOString(),
+        
+        // Complete Form.io submission (includes everything!)
+        completeSubmission: formSubmission,
+        
+        // Organized by sections for easier access later
+        patientEncounter: {
+          studentRole: formSubmission.data.studentRole,
+          patientType: formSubmission.data.patientType,
+          setting: formSubmission.data.setting,
+          speciesGroup: formSubmission.data.speciesGroup,
+          primaryBodySystem: formSubmission.data.primaryBodySystem,
+          isMultiPatientEncounter: formSubmission.data.isMultiPatientEncounter,
+          numberOfAnimalsInGroup: formSubmission.data.numberOfAnimalsInGroup,
+          numberOfAnimalsTreated: formSubmission.data.numberOfAnimalsTreated,
+          isDischargedToday: formSubmission.data.isDischargedToday,
+          daysHospitalized: formSubmission.data.daysHospitalized,
+          description: formSubmission.data.description
+        },
+        
+        diagnosis: {
+          diagnosis1: formSubmission.data.diagnosis1,
+          diagnosis2: formSubmission.data.diagnosis2,
+          type1: formSubmission.data.type1,
+          type2: formSubmission.data.type2,
+          diagnosisNotes: formSubmission.data.diagnosisNotes
+        },
+        
+        procedures: {
+          procedure1: formSubmission.data.procedure1,
+          level1: formSubmission.data.level1
+        },
+        
+        competencies: {
+          clinicalCompetencyEntrustment: formSubmission.data.clinicalCompetencyEntrustment
+        },
+        
+        personalReflection: {
+          contextOfReflection: formSubmission.data.contextOfReflection,
+          personalReactionsAndFeelings: formSubmission.data.personalReactionsAndFeelings,
+          performanceEvaluation: formSubmission.data.performanceEvaluation,
+          actionPlanForImprovement: formSubmission.data.actionPlanForImprovement
+        }
+      },
+      
+      status: 'DRAFT',
+      createdBy: `student_${this.studentId}`
+    };
+
+    // POST to backend API
+    this.http.post(`${environment.apiUrl}/case-logs`, caseLog)
+      .subscribe({
+        next: (response: any) => {
+          console.log('✅ Case log saved successfully!', response);
+          alert('Case log saved successfully!');
+          
+          // Navigate back to rotation list
+          this.router.navigate(['/rotations']);
+        },
+        error: (error) => {
+          console.error('❌ Error saving case log:', error);
+          alert('Error saving case log. Please try again.');
+        }
+      });
   }
 }
