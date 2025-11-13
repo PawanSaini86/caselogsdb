@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { CommonModule } from '@angular/common';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
 
@@ -7,13 +8,19 @@ declare var Formio: any;
 
 @Component({
   selector: 'app-case-log-form',
-  templateUrl: './case-log-form.component.html',
-  styleUrls: ['./case-log-form.component.css']
+  standalone: true,
+  imports: [CommonModule, HttpClientModule],
+  template: `
+    <div style="padding: 20px; max-width: 1200px; margin: 0 auto; background: white; min-height: 100vh;">
+      <h2>Veterinary Case Log - Rotation {{ rotationId }}</h2>
+      <div id="formio" style="margin-top: 20px;"></div>
+    </div>
+  `,
+  styles: []
 })
 export class CaseLogFormComponent implements OnInit {
   rotationId!: number;
-  studentId: number = environment.studentId || 522;
-  formType: 'medical' | 'veterinary' = 'veterinary';
+  studentId: number = 522;
 
   constructor(
     private http: HttpClient,
@@ -22,18 +29,26 @@ export class CaseLogFormComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    // Get rotation ID from route
     this.route.params.subscribe(params => {
       this.rotationId = +params['rotationId'];
-      this.createVeterinaryForm();
+      console.log('🔵 Loading form for rotation:', this.rotationId);
+      
+      // Wait for DOM to be ready
+      setTimeout(() => {
+        this.createVeterinaryForm();
+      }, 100);
     });
   }
 
   createVeterinaryForm() {
+    // Check if Form.io is loaded
     if (typeof Formio === 'undefined') {
-      console.error('Formio is not loaded');
+      console.error('❌ Formio is not loaded!');
+      alert('Form.io library not loaded. Please add scripts to index.html:\n\n<link rel="stylesheet" href="https://cdn.form.io/formiojs/formio.full.min.css">\n<script src="https://cdn.form.io/formiojs/formio.full.min.js"></script>');
       return;
     }
+
+    console.log('✅ Form.io loaded, creating form...');
 
     const formDefinition = {
       display: "wizard",
@@ -41,7 +56,7 @@ export class CaseLogFormComponent implements OnInit {
         {
           title: "Patient Encounter",
           type: "panel",
-          key: "patientDemographics",
+          key: "patientEncounter",
           components: [
             {
               type: "columns",
@@ -96,12 +111,10 @@ export class CaseLogFormComponent implements OnInit {
               input: true,
               data: {
                 values: [
-                  { label: "1. Ambulatory / Field Service", value: "ambulatory_field" },
-                  { label: "2. Hospitalized (with overnight stay)", value: "hospitalized_overnight" },
-                  { label: "3. Hospital (without overnight stay)", value: "hospital_no_overnight" },
-                  { label: "4. Simulation / Virtual / Online", value: "simulation_virtual" },
-                  { label: "5. Lab Animal / Research", value: "lab_animal_research" },
-                  { label: "6. Diagnostic Lab / Clin Path", value: "diagnostic_lab" }
+                  { label: "Ambulatory / Field Service", value: "ambulatory_field" },
+                  { label: "Hospitalized (overnight)", value: "hospitalized_overnight" },
+                  { label: "Hospital (no overnight)", value: "hospital_no_overnight" },
+                  { label: "Simulation / Virtual", value: "simulation_virtual" }
                 ]
               },
               validate: { required: true }
@@ -116,14 +129,13 @@ export class CaseLogFormComponent implements OnInit {
                   { label: "Small Animal", value: "small_animal" },
                   { label: "Large Animal", value: "large_animal" },
                   { label: "Equine", value: "equine" },
-                  { label: "Exotic", value: "exotic" },
-                  { label: "Avian", value: "avian" }
+                  { label: "Exotic", value: "exotic" }
                 ]
               },
               validate: { required: true }
             },
             {
-              label: "What is the primary body system involved?",
+              label: "Primary Body System",
               type: "select",
               key: "primaryBodySystem",
               input: true,
@@ -134,70 +146,19 @@ export class CaseLogFormComponent implements OnInit {
                   { label: "Gastrointestinal", value: "gastrointestinal" },
                   { label: "Neurological", value: "neurological" },
                   { label: "Musculoskeletal", value: "musculoskeletal" },
-                  { label: "Integumentary", value: "integumentary" },
-                  { label: "Urogenital", value: "urogenital" },
-                  { label: "Endocrine", value: "endocrine" }
+                  { label: "Integumentary", value: "integumentary" }
                 ]
               },
               validate: { required: true }
             },
             {
-              label: "Multi-patient Encounter",
-              type: "checkbox",
-              key: "isMultiPatientEncounter",
-              input: true
-            },
-            {
-              type: "columns",
-              columns: [
-                {
-                  components: [
-                    {
-                      label: "Number of animals in group",
-                      type: "number",
-                      key: "numberOfAnimalsInGroup",
-                      input: true,
-                      placeholder: "Enter number of animals",
-                      validate: { min: 1 },
-                      conditional: {
-                        show: true,
-                        when: "isMultiPatientEncounter",
-                        eq: true
-                      }
-                    }
-                  ],
-                  width: 6
-                },
-                {
-                  components: [
-                    {
-                      label: "Number of animals treated",
-                      type: "number",
-                      key: "numberOfAnimalsTreated",
-                      input: true,
-                      placeholder: "Enter number treated",
-                      validate: { min: 1 },
-                      conditional: {
-                        show: true,
-                        when: "isMultiPatientEncounter",
-                        eq: true
-                      }
-                    }
-                  ],
-                  width: 6
-                }
-              ]
-            },
-            {
-              label: "Species/Patient Details and/or Description of Activities",
+              label: "Case Description",
               type: "textarea",
               key: "description",
               input: true,
-              rows: 10,
-              placeholder: "Enter detailed description...",
-              validate: {
-                maxLength: 4000
-              }
+              rows: 8,
+              placeholder: "Describe the patient, presenting complaint, findings, and treatment...",
+              validate: { required: true }
             }
           ]
         },
@@ -207,51 +168,20 @@ export class CaseLogFormComponent implements OnInit {
           key: "diagnosis",
           components: [
             {
-              type: "columns",
-              columns: [
-                {
-                  components: [
-                    {
-                      label: "Diagnosis 1",
-                      type: "select",
-                      key: "diagnosis1",
-                      input: true,
-                      searchEnabled: true,
-                      data: {
-                        values: [
-                          { label: "- No clinical problem", value: "no_clinical_problem" },
-                          { label: "Allergic dermatitis", value: "allergic_dermatitis" },
-                          { label: "Anemia", value: "anemia" },
-                          { label: "Arthritis", value: "arthritis" },
-                          { label: "Diabetes mellitus", value: "diabetes_mellitus" },
-                          { label: "Fracture", value: "fracture" },
-                          { label: "Gastroenteritis", value: "gastroenteritis" }
-                        ]
-                      },
-                      validate: { required: true }
-                    }
-                  ],
-                  width: 6
-                },
-                {
-                  components: [
-                    {
-                      label: "Type 1",
-                      type: "select",
-                      key: "type1",
-                      input: true,
-                      data: {
-                        values: [
-                          { label: "Definitive", value: "definitive" },
-                          { label: "Tentative", value: "tentative" },
-                          { label: "Differential", value: "differential" }
-                        ]
-                      }
-                    }
-                  ],
-                  width: 6
-                }
-              ]
+              label: "Primary Diagnosis",
+              type: "textfield",
+              key: "diagnosis1",
+              input: true,
+              placeholder: "Enter primary diagnosis",
+              validate: { required: true }
+            },
+            {
+              label: "Diagnosis Notes",
+              type: "textarea",
+              key: "diagnosisNotes",
+              input: true,
+              rows: 3,
+              placeholder: "Additional diagnostic information..."
             }
           ]
         },
@@ -261,34 +191,23 @@ export class CaseLogFormComponent implements OnInit {
           key: "procedures",
           components: [
             {
-              label: "Procedure 1",
-              type: "select",
+              label: "Procedure Performed",
+              type: "textfield",
               key: "procedure1",
               input: true,
-              searchEnabled: true,
-              data: {
-                values: [
-                  { label: "- Physical exam", value: "physical_exam" },
-                  { label: "Abdominal procedure", value: "abdominal_procedure" }
-                ]
-              },
+              placeholder: "e.g., Physical exam, Blood draw, Surgery",
               validate: { required: true }
-            }
-          ]
-        },
-        {
-          title: "Competencies",
-          type: "panel",
-          key: "competencies",
-          components: [
+            },
             {
-              label: "Clinical Competency Entrustment",
+              label: "Level of Involvement",
               type: "select",
-              key: "clinicalCompetencyEntrustment",
+              key: "level1",
               input: true,
               data: {
                 values: [
-                  { label: "CC01 - Evaluate patient behavior", value: "cc01" }
+                  { label: "Observed", value: "observed" },
+                  { label: "Assisted", value: "assisted" },
+                  { label: "Performed", value: "performed" }
                 ]
               }
             }
@@ -297,37 +216,24 @@ export class CaseLogFormComponent implements OnInit {
         {
           title: "Personal Reflection",
           type: "panel",
-          key: "personalReflection",
+          key: "reflection",
           components: [
             {
-              label: "Context of Personal Reflection",
+              label: "What did you learn from this case?",
               type: "textarea",
-              key: "contextOfReflection",
+              key: "learnings",
               input: true,
-              rows: 3
-            },
-            {
-              label: "Personal Reactions and Feelings",
-              type: "textarea",
-              key: "personalReactionsAndFeelings",
-              input: true,
-              rows: 3,
+              rows: 4,
+              placeholder: "Describe your key learnings and takeaways...",
               validate: { required: true }
             },
             {
-              label: "Performance Evaluation",
+              label: "How would you improve your performance?",
               type: "textarea",
-              key: "performanceEvaluation",
+              key: "improvements",
               input: true,
               rows: 3,
-              validate: { required: true }
-            },
-            {
-              label: "Action Plan for Improvement",
-              type: "textarea",
-              key: "actionPlanForImprovement",
-              input: true,
-              rows: 3,
+              placeholder: "What would you do differently next time?",
               validate: { required: true }
             }
           ]
@@ -338,107 +244,69 @@ export class CaseLogFormComponent implements OnInit {
     // Create the form
     Formio.createForm(document.getElementById('formio'), formDefinition)
       .then((form: any) => {
-        console.log('Veterinary form created successfully');
+        console.log('✅ Veterinary form created successfully!');
         
-        // ========================================
-        // HANDLE FORM SUBMISSION - SAVE TO DATABASE
-        // ========================================
+        // Handle form submission
         form.on('submit', (submission: any) => {
-          console.log('Form submitted:', submission);
-          this.saveCaseLogToDatabase(submission);
+          console.log('📝 Form submitted:', submission);
+          this.saveToDatabase(submission);
         });
       })
       .catch((error: any) => {
-        console.error('Error creating form:', error);
+        console.error('❌ Error creating form:', error);
+        alert('Error creating form. Check console for details.');
       });
   }
 
-  /**
-   * Save the complete form submission to the database
-   * Everything goes into CASE_DATA as JSON
-   */
-  saveCaseLogToDatabase(formSubmission: any) {
-    // Show loading indicator
-    console.log('Saving case log to database...');
+  saveToDatabase(formSubmission: any) {
+    console.log('💾 Saving case log to database...');
 
-    // Prepare case log object
     const caseLog = {
-      // Basic fields for quick querying
       rotationId: this.rotationId,
       studentId: this.studentId,
-      caseDate: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD
+      caseDate: new Date().toISOString().split('T')[0],
       
-      // Extract key fields for database columns (for easy filtering/searching)
-      diagnosis: formSubmission.data.diagnosis1 || 'Not specified',
-      procedures: formSubmission.data.procedure1 || 'Not specified',
-      
-      // Save EVERYTHING in CASE_DATA as JSON
+      // ALL form data goes into caseData as JSON
       caseData: {
-        // Metadata
         formType: 'veterinary',
         formVersion: '1.0',
         submittedAt: new Date().toISOString(),
         
-        // Complete Form.io submission (includes everything!)
-        completeSubmission: formSubmission,
+        // Complete submission
+        submission: formSubmission,
         
-        // Organized by sections for easier access later
-        patientEncounter: {
-          studentRole: formSubmission.data.studentRole,
-          patientType: formSubmission.data.patientType,
-          setting: formSubmission.data.setting,
-          speciesGroup: formSubmission.data.speciesGroup,
-          primaryBodySystem: formSubmission.data.primaryBodySystem,
-          isMultiPatientEncounter: formSubmission.data.isMultiPatientEncounter,
-          numberOfAnimalsInGroup: formSubmission.data.numberOfAnimalsInGroup,
-          numberOfAnimalsTreated: formSubmission.data.numberOfAnimalsTreated,
-          isDischargedToday: formSubmission.data.isDischargedToday,
-          daysHospitalized: formSubmission.data.daysHospitalized,
-          description: formSubmission.data.description
-        },
-        
-        diagnosis: {
-          diagnosis1: formSubmission.data.diagnosis1,
-          diagnosis2: formSubmission.data.diagnosis2,
-          type1: formSubmission.data.type1,
-          type2: formSubmission.data.type2,
-          diagnosisNotes: formSubmission.data.diagnosisNotes
-        },
-        
-        procedures: {
-          procedure1: formSubmission.data.procedure1,
-          level1: formSubmission.data.level1
-        },
-        
-        competencies: {
-          clinicalCompetencyEntrustment: formSubmission.data.clinicalCompetencyEntrustment
-        },
-        
-        personalReflection: {
-          contextOfReflection: formSubmission.data.contextOfReflection,
-          personalReactionsAndFeelings: formSubmission.data.personalReactionsAndFeelings,
-          performanceEvaluation: formSubmission.data.performanceEvaluation,
-          actionPlanForImprovement: formSubmission.data.actionPlanForImprovement
-        }
+        // Form data
+        studentRole: formSubmission.data.studentRole,
+        patientType: formSubmission.data.patientType,
+        setting: formSubmission.data.setting,
+        speciesGroup: formSubmission.data.speciesGroup,
+        primaryBodySystem: formSubmission.data.primaryBodySystem,
+        description: formSubmission.data.description,
+        diagnosis1: formSubmission.data.diagnosis1,
+        diagnosisNotes: formSubmission.data.diagnosisNotes,
+        procedure1: formSubmission.data.procedure1,
+        level1: formSubmission.data.level1,
+        learnings: formSubmission.data.learnings,
+        improvements: formSubmission.data.improvements
       },
       
       status: 'DRAFT',
       createdBy: `student_${this.studentId}`
     };
 
-    // POST to backend API
-    this.http.post(`${environment.apiUrl}/case-logs`, caseLog)
+    // POST to backend
+    this.http.post('http://localhost:3000/api/case-logs', caseLog)
       .subscribe({
         next: (response: any) => {
           console.log('✅ Case log saved successfully!', response);
-          alert('Case log saved successfully!');
+          alert(`Case log saved successfully! ID: ${response.data.id}`);
           
-          // Navigate back to rotation list
+          // Navigate back to rotations
           this.router.navigate(['/rotations']);
         },
         error: (error) => {
           console.error('❌ Error saving case log:', error);
-          alert('Error saving case log. Please try again.');
+          alert('Error saving case log. Please check console for details.');
         }
       });
   }

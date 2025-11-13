@@ -24,7 +24,6 @@ try {
   styleUrls: ['./rotations-list.component.css']
 })
 export class RotationsListComponent implements OnInit {
-  userType: 'vet' | 'medical' = 'medical';
   rotations: Rotation[] = [];
   loading: boolean = false;
   error: string | null = null;
@@ -40,39 +39,10 @@ export class RotationsListComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.loadUserType();
+    
     this.loadRotations();
+    this.studentId = 522;
   }
-
-  loadUserType() {
-    // Only access localStorage in browser
-    if (this.isBrowser) {
-      // Check localStorage first
-      const storedUserType = localStorage.getItem('userType');
-      if (storedUserType === 'vet' || storedUserType === 'medical') {
-        this.userType = storedUserType as 'vet' | 'medical';
-      }
-      
-      // Check URL parameter
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('userType') === 'vet') {
-        this.userType = 'vet';
-        localStorage.setItem('userType', 'vet');
-      } else if (urlParams.get('userType') === 'medical') {
-        this.userType = 'medical';
-        localStorage.setItem('userType', 'medical');
-      }
-    }
-
-    // For demo: set student ID based on user type
-    // In production, this should come from authentication
-    if (this.userType === 'vet') {
-      this.studentId = 522; // Vet student ID from database
-    } else {
-      this.studentId = 522; // Medical student ID
-    }
-  }
-
   loadRotations() {
     this.loading = true;
     this.error = null;
@@ -99,7 +69,6 @@ export class RotationsListComponent implements OnInit {
 
   // Fallback mock data for development
   loadMockData() {
-    if (this.userType === 'vet') {
       this.rotations = [
         { 
           id: 101, 
@@ -122,41 +91,6 @@ export class RotationsListComponent implements OnInit {
           caseLogsCount: 5
         }
       ];
-    } else {
-      this.rotations = [
-        { 
-          id: 1, 
-          rotation: 'Rotation 1',
-          discipline: 'Internal Medicine', 
-          preceptor: 'Dr. Sarah Johnson', 
-          site: 'City General Hospital',
-          startDate: '09/01/2025', 
-          endDate: '10/26/2025',
-          caseLogsCount: 6
-        },
-        { 
-          id: 2, 
-          rotation: 'Rotation 2',
-          discipline: 'Surgery', 
-          preceptor: 'Dr. Michael Chen', 
-          site: 'Memorial Medical Center',
-          startDate: '10/28/2025', 
-          endDate: '12/08/2025',
-          caseLogsCount: 3
-        }
-      ];
-    }
-  }
-
-  switchUserType(type: 'vet' | 'medical') {
-    this.userType = type;
-    
-    // Only access localStorage in browser
-    if (this.isBrowser) {
-      localStorage.setItem('userType', type);
-    }
-    
-    this.loadRotations();
   }
 
   viewRotation(rotationId: number) {
@@ -164,7 +98,8 @@ export class RotationsListComponent implements OnInit {
   }
 
   addCaseLog(rotationId: number) {
-    this.router.navigate(['/case-log', rotationId]);
+  console.log('Navigating to case log form for rotation:', rotationId);
+  this.router.navigate(['/case-log', rotationId]);
   }
 
   // Retry loading rotations

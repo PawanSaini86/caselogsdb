@@ -1,26 +1,7 @@
 <div class="page-container">
   <!-- Header -->
   <div class="header">
-    <!-- User Type Switcher -->
-    <div class="user-type-switcher">
-      <span class="switcher-label">Student Type:</span>
-      <button 
-        [class.active]="userType === 'medical'" 
-        (click)="switchUserType('medical')"
-        class="type-btn">
-        Medical Student
-      </button>
-      <button 
-        [class.active]="userType === 'vet'" 
-        (click)="switchUserType('vet')"
-        class="type-btn">
-        Veterinary Student
-      </button>
-    </div>
-
     <h1 class="title">Clinical Rotations</h1>
-    <p class="subtitle" *ngIf="userType === 'medical'">Manage your clinical rotations and case logs</p>
-    <p class="subtitle" *ngIf="userType === 'vet'">Manage your veterinary rotations and case logs</p>
   </div>
 
   <!-- Rotations Table/Grid -->
@@ -50,24 +31,22 @@
             <span class="detail-text">{{ rotation.site }}</span>
           </div>
           
-          <div class="detail-row">
-            <div class="detail-item">
-              <svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-              </svg>
-              <span class="detail-text">{{ rotation.startDate }} - {{ rotation.endDate }}</span>
-            </div>
-            
-            <div class="detail-item case-logs-badge">
-              <svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-              </svg>
-              <span class="detail-text">{{ rotation.caseLogsCount }} Case Logs</span>
-            </div>
+          <div class="detail-item">
+            <svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span class="detail-text">{{ rotation.startDate }} - {{ rotation.endDate }}</span>
+          </div>
+          
+          <div class="detail-item case-logs-badge">
+            <svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            <span class="detail-text">{{ rotation.caseLogsCount }} Case Logs</span>
           </div>
         </div>
       </div>
