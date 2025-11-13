@@ -394,79 +394,62 @@ app.get('/api/rotations/:rotationId/case-logs', async (req, res) => {
 });
 
 // Get single case log with full data
-app.get('/api/case-logs/:id', async (req, res) => {
-  let connection;
+app.get('/api/students/:studentId/rotations-summary', (req, res) => {
+  const { studentId } = req.params;
   
-  try {
-    const caseLogId = parseInt(req.params.id);
-    console.log('📄 Fetching case log:', caseLogId);
-    
-    connection = await oracledb.getConnection(dbConfig);
-    
-    const query = `
-      SELECT 
-        ID, ROTID, STUDID, CASE_DATE, CASE_DATA, STATUS, CREATED_DATE, MODIFIED_DATE
-      FROM caselog
-      WHERE ID = :id AND IS_DELETED = 'N'
-    `;
-    
-    const result = await connection.execute(
-      query,
-      { id: caseLogId },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Case log not found'
+  console.log('📋 Fetching rotations with case log count for student:', studentId);
+  
+  const query = `
+    SELECT 
+  r.ID as id,
+  r.ROTNUM as rotationNumber,
+  TO_CHAR(r.STARTING, 'MM/DD/YYYY') as startDate,
+  TO_CHAR(r.ENDING, 'MM/DD/YYYY') as endDate,
+  'Rotation ' || r.ROTNUM as discipline, 
+  
+  h.NAME as hospital,
+  h.CITY as hospitalCity,
+  h.STATE as hospitalState,
+  
+  p.FIRSTNAME || ' ' || p.LASTNAME as preceptorFullName,
+  p.EMAIL as preceptorEmail,
+  p.PHONE1 as preceptorPhone,
+  
+  (SELECT COUNT(*) 
+   FROM caselog c 
+   WHERE c.ROTID = r.ID 
+     AND c.IS_DELETED = 'N') as caseLogCount
+  
+FROM rotation r
+LEFT JOIN hospital h ON r.HOSPID = h.ID
+LEFT JOIN preceptor p ON r.PRECID = p.ID
+WHERE r.STUDID = :studentId
+ORDER BY r.STARTING DESC
+  `;
+  
+  connection.query(query, [studentId], (error, results) => {
+    if (error) {
+      console.error('❌ Error fetching rotations:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Error fetching rotations',
+        error: error.message 
       });
     }
     
-    const row = result.rows[0];
-    
-    let caseData = null;
-    if (row.CASE_DATA) {
-      try {
-        caseData = JSON.parse(row.CASE_DATA);
-      } catch (e) {
-        console.error('Error parsing CASE_DATA:', e);
-        caseData = row.CASE_DATA;
-      }
-    }
-    
-    const caseLog = {
-      id: row.ID,
-      rotationId: row.ROTID,
-      studentId: row.STUDID,
-      caseDate: formatDate(row.CASE_DATE),
-      caseData: caseData,
-      status: row.STATUS,
-      createdDate: formatDate(row.CREATED_DATE),
-      modifiedDate: formatDate(row.MODIFIED_DATE)
-    };
+    console.log(`✅ Found ${results.length} rotations for student ${studentId}`);
+    console.log('📊 Case log counts:', results.map(r => ({
+      rotation: r.rotationNumber,
+      discipline: r.discipline,
+      caseLogCount: r.caseLogCount
+    })));
     
     res.json({
       success: true,
-      data: caseLog
+      data: results,
+      studentId: parseInt(studentId)
     });
-    
-  } catch (error) {
-    console.error('❌ Error fetching case log:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch case log',
-      message: error.message
-    });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (err) {
-        console.error('Error closing connection:', err);
-      }
-    }
-  }
+  });
 });
 
 // Get all case logs for student
