@@ -1,13 +1,25 @@
 <div class="case-log-container">
-  <!-- Header Section -->
+  <!-- Purple Gradient Header -->
   <div class="case-log-header">
-    <div *ngIf="userType === 'medical'">
-      <span class="user-type-badge">Medical Student</span>
-      <h1 class="case-log-title">Clinical Case Log Form</h1>
-    </div>
-    <div *ngIf="userType === 'vet'">
-      <span class="user-type-badge">Veterinary Student</span>
-      <h1 class="case-log-title">Clinical Case Log Form</h1>
+    <div class="header-content">
+      <a routerLink="/rotations" class="back-button">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back to Rotations
+      </a>
+      
+      <div *ngIf="userType === 'vet'">
+        <span class="user-type-badge">Veterinary Student</span>
+        <h1 class="case-log-title">Clinical Case Log</h1>
+        <p class="case-log-subtitle">Document your clinical experience</p>
+      </div>
+      
+      <div *ngIf="userType === 'medical'">
+        <span class="user-type-badge">Medical Student</span>
+        <h1 class="case-log-title">Clinical Case Log</h1>
+        <p class="case-log-subtitle">Document your clinical experience</p>
+      </div>
     </div>
   </div>
 

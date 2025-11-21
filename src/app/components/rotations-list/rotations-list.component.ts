@@ -3,12 +3,10 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { RotationService, Rotation } from '../../services/rotation.service';
 
-// Try to import environment, fallback if not available
 let environment: any;
 try {
   environment = require('../../../environments/environment').environment;
 } catch (e) {
-  // Fallback if environment file doesn't exist
   environment = {
     production: false,
     apiUrl: 'http://localhost:3000/api',
@@ -65,7 +63,6 @@ export class RotationsListComponent implements OnInit {
         this.error = `Failed to load rotations: ${error.message}`;
         this.loading = false;
         
-        // Show helpful error message
         if (error.message.includes('404')) {
           this.error = 'API endpoint not found. Make sure backend server is running.';
         } else if (error.message.includes('0')) {
@@ -76,12 +73,31 @@ export class RotationsListComponent implements OnInit {
   }
 
   viewRotation(rotationId: number) {
-    console.log('Viewing logs for rotation:', rotationId);
-    this.router.navigate(['/case-logs', rotationId]);
+    console.log('👁️ VIEW LOGS CLICKED!');
+    console.log('   Rotation ID:', rotationId);
+    console.log('   Navigating to: /case-logs/' + rotationId);
+    console.log('   Full URL will be: http://localhost:4200/case-logs/' + rotationId);
+    
+    // Navigate to case logs list
+    this.router.navigate(['/case-logs', rotationId]).then(success => {
+      if (success) {
+        console.log('✅ Navigation successful!');
+      } else {
+        console.error('❌ Navigation failed! Check if route is defined in app.routes.ts');
+        alert('Navigation failed! Route /case-logs/:rotationId might not be defined. Check console for details.');
+      }
+    }).catch(err => {
+      console.error('❌ Navigation error:', err);
+      alert('Navigation error: ' + err.message);
+    });
   }
 
   addCaseLog(rotationId: number) {
-    console.log('Adding case log for rotation:', rotationId);
+    console.log('➕ ADD CASE LOG CLICKED!');
+    console.log('   Rotation ID:', rotationId);
+    console.log('   Navigating to: /case-log/' + rotationId);
+    
+    // Navigate to case log form
     this.router.navigate(['/case-log', rotationId]);
   }
 

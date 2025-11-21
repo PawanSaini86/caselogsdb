@@ -1,25 +1,21 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { RotationService, Rotation, CaseLog } from '../../services/rotation.service';
 
-interface CaseLog {
+interface CaseLogDisplay {
   id: number;
   rotationId: number;
   date: string;
-  patientId: string;
-  age: number;
-  gender: string;
-  diagnosis: string;
-  procedures: string;
-  clinicalSetting: string;
+  status: string;
   approved: boolean;
   submittedDate: string;
-}
-
-interface Rotation {
-  id: number;
-  discipline: string;
-  rotation: string;
+  // Extracted from caseData
+  patientType?: string;
+  diagnosis?: string;
+  procedures?: string;
+  clinicalSetting?: string;
+  studentRole?: string;
 }
 
 @Component({
@@ -30,154 +26,169 @@ interface Rotation {
   styleUrls: ['./case-logs-list.component.css']
 })
 export class CaseLogsListComponent implements OnInit {
-  rotationId: string | null = null;
+  rotationId: number | null = null;
   rotation: Rotation | null = null;
-  caseLogs: CaseLog[] = [];
-  filteredLogs: CaseLog[] = [];
-  filterStatus: string = 'all'; // 'all', 'approved', 'pending'
-
-  // Mock data - replace with actual API calls
-  rotations: Rotation[] = [
-    { id: 1, discipline: 'Internal Medicine', rotation: 'Rotation 1' },
-    { id: 2, discipline: 'Surgery', rotation: 'Rotation 2' },
-    { id: 3, discipline: 'Pediatrics', rotation: 'Rotation 3' },
-    { id: 4, discipline: 'Family Medicine', rotation: 'Rotation 4' }
-  ];
-
-  allCaseLogs: CaseLog[] = [
-    {
-      id: 1,
-      rotationId: 1,
-      date: '10/01/2025',
-      patientId: 'PT-001234',
-      age: 65,
-      gender: 'Male',
-      diagnosis: 'Hypertension, Type 2 Diabetes Mellitus',
-      procedures: 'Physical Exam, BP Monitoring, Blood Glucose Testing',
-      clinicalSetting: 'Outpatient',
-      approved: true,
-      submittedDate: '10/02/2025'
-    },
-    {
-      id: 2,
-      rotationId: 1,
-      date: '10/02/2025',
-      patientId: 'PT-001235',
-      age: 45,
-      gender: 'Female',
-      diagnosis: 'Community Acquired Pneumonia',
-      procedures: 'Chest X-ray Review, Antibiotic Prescription, Respiratory Assessment',
-      clinicalSetting: 'Inpatient',
-      approved: true,
-      submittedDate: '10/03/2025'
-    },
-    {
-      id: 3,
-      rotationId: 1,
-      date: '10/03/2025',
-      patientId: 'PT-001236',
-      age: 28,
-      gender: 'Male',
-      diagnosis: 'Acute Appendicitis',
-      procedures: 'Abdominal Exam, Surgical Consultation, Pre-op Assessment',
-      clinicalSetting: 'Emergency Department',
-      approved: false,
-      submittedDate: '10/04/2025'
-    },
-    {
-      id: 4,
-      rotationId: 1,
-      date: '10/05/2025',
-      patientId: 'PT-001237',
-      age: 52,
-      gender: 'Female',
-      diagnosis: 'Gastroesophageal Reflux Disease (GERD)',
-      procedures: 'History Taking, Lifestyle Counseling, Medication Management',
-      clinicalSetting: 'Outpatient',
-      approved: true,
-      submittedDate: '10/06/2025'
-    },
-    {
-      id: 5,
-      rotationId: 1,
-      date: '10/07/2025',
-      patientId: 'PT-001238',
-      age: 38,
-      gender: 'Female',
-      diagnosis: 'Migraine Headache',
-      procedures: 'Neurological Exam, Pain Management, Patient Education',
-      clinicalSetting: 'Outpatient',
-      approved: true,
-      submittedDate: '10/08/2025'
-    },
-    {
-      id: 6,
-      rotationId: 1,
-      date: '10/08/2025',
-      patientId: 'PT-001239',
-      age: 72,
-      gender: 'Female',
-      diagnosis: 'Urinary Tract Infection',
-      procedures: 'Urinalysis, Antibiotic Therapy, Follow-up Planning',
-      clinicalSetting: 'Outpatient',
-      approved: false,
-      submittedDate: '10/09/2025'
-    },
-    {
-      id: 7,
-      rotationId: 2,
-      date: '11/01/2025',
-      patientId: 'PT-002001',
-      age: 55,
-      gender: 'Male',
-      diagnosis: 'Cholecystitis',
-      procedures: 'Laparoscopic Cholecystectomy (Assisted)',
-      clinicalSetting: 'Operating Room',
-      approved: true,
-      submittedDate: '11/02/2025'
-    },
-    {
-      id: 8,
-      rotationId: 2,
-      date: '11/03/2025',
-      patientId: 'PT-002002',
-      age: 42,
-      gender: 'Male',
-      diagnosis: 'Inguinal Hernia',
-      procedures: 'Hernia Repair (Observed)',
-      clinicalSetting: 'Operating Room',
-      approved: true,
-      submittedDate: '11/04/2025'
-    },
-    {
-      id: 9,
-      rotationId: 2,
-      date: '11/05/2025',
-      patientId: 'PT-002003',
-      age: 68,
-      gender: 'Female',
-      diagnosis: 'Colon Cancer',
-      procedures: 'Colonoscopy, Biopsy, Surgical Planning',
-      clinicalSetting: 'Outpatient',
-      approved: false,
-      submittedDate: '11/06/2025'
-    }
-  ];
+  caseLogs: CaseLogDisplay[] = [];
+  filteredLogs: CaseLogDisplay[] = [];
+  filterStatus: string = 'all';
+  loading: boolean = false;
+  error: string | null = null;
 
   constructor(
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private rotationService: RotationService
   ) {}
 
   ngOnInit() {
-    this.rotationId = this.route.snapshot.paramMap.get('rotationId');
+    const rotationIdParam = this.route.snapshot.paramMap.get('rotationId');
     
-    if (this.rotationId) {
-      const rotId = parseInt(this.rotationId);
-      this.rotation = this.rotations.find(r => r.id === rotId) || null;
-      this.caseLogs = this.allCaseLogs.filter(log => log.rotationId === rotId);
-      this.filteredLogs = this.caseLogs;
+    if (rotationIdParam) {
+      this.rotationId = parseInt(rotationIdParam);
+      console.log('📋 Loading case logs for rotation:', this.rotationId);
+      
+      this.loadRotation();
+      this.loadCaseLogs();
     }
+  }
+
+  loadRotation() {
+    if (!this.rotationId) return;
+    
+    this.rotationService.getRotation(this.rotationId).subscribe({
+      next: (rotation) => {
+        console.log('✅ Rotation loaded:', rotation);
+        this.rotation = rotation;
+      },
+      error: (error) => {
+        console.error('❌ Error loading rotation:', error);
+      }
+    });
+  }
+
+  loadCaseLogs() {
+    if (!this.rotationId) return;
+    
+    this.loading = true;
+    this.error = null;
+    
+    console.log('📡 Fetching case logs from API for rotation:', this.rotationId);
+    
+    this.rotationService.getCaseLogsForRotation(this.rotationId).subscribe({
+      next: (logs: CaseLog[]) => {
+        console.log('✅ Case logs loaded:', logs);
+        
+        this.caseLogs = logs.map(log => this.transformCaseLog(log));
+        this.filteredLogs = this.caseLogs;
+        this.loading = false;
+        
+        console.log('📊 Transformed case logs:', this.caseLogs);
+      },
+      error: (error) => {
+        console.error('❌ Error loading case logs:', error);
+        this.error = `Failed to load case logs: ${error.message}`;
+        this.loading = false;
+        
+        if (error.message.includes('404')) {
+          this.error = 'Case logs not found. Please add a case log first.';
+        } else if (error.message.includes('0')) {
+          this.error = 'Cannot connect to backend. Is the server running?';
+        }
+      }
+    });
+  }
+
+  transformCaseLog(log: CaseLog): CaseLogDisplay {
+    let caseData: any = {};
+    
+    if (log.caseData) {
+      if (typeof log.caseData === 'string') {
+        try {
+          caseData = JSON.parse(log.caseData);
+        } catch (e) {
+          console.warn('Could not parse caseData for log', log.id);
+        }
+      } else {
+        caseData = log.caseData;
+      }
+    }
+    
+    const submission = caseData.submission?.data || caseData;
+    
+    return {
+      id: log.id,
+      rotationId: log.rotationId,
+      date: this.formatDate(log.caseDate),
+      status: log.status || 'DRAFT',
+      approved: log.status === 'APPROVED',
+      submittedDate: this.formatDate(log.createdDate || log.caseDate),
+      
+      patientType: this.formatLabel(submission.patientType || 'N/A'),
+      diagnosis: this.formatDiagnosis(submission),
+      procedures: this.formatProcedures(submission),
+      clinicalSetting: this.formatLabel(submission.setting || 'N/A'),
+      studentRole: this.formatLabel(submission.studentRole || 'N/A')
+    };
+  }
+
+  formatDiagnosis(data: any): string {
+    const diagnoses = [];
+    
+    if (data.diagnosis1) {
+      diagnoses.push(this.formatLabel(data.diagnosis1));
+    }
+    if (data.diagnosis2) {
+      diagnoses.push(this.formatLabel(data.diagnosis2));
+    }
+    if (data.diagnosis3) {
+      diagnoses.push(this.formatLabel(data.diagnosis3));
+    }
+    
+    return diagnoses.length > 0 ? diagnoses.join(', ') : 'No diagnosis recorded';
+  }
+
+  formatProcedures(data: any): string {
+    const procedures = [];
+    
+    if (data.procedure1) {
+      procedures.push(this.formatLabel(data.procedure1));
+    }
+    if (data.procedure2) {
+      procedures.push(this.formatLabel(data.procedure2));
+    }
+    if (data.procedure3) {
+      procedures.push(this.formatLabel(data.procedure3));
+    }
+    
+    return procedures.length > 0 ? procedures.join(', ') : 'No procedures recorded';
+  }
+
+  formatLabel(value: string): string {
+    return value
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+
+  formatDate(dateString: string | undefined): string {
+    if (!dateString) return 'N/A';
+    
+    if (dateString.includes('/')) return dateString;
+    
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: '2-digit', 
+      day: '2-digit', 
+      year: 'numeric' 
+    });
+  }
+
+  // Truncate long text for inline display
+  truncate(text: string | undefined, maxLength: number): string {
+    if (!text) return 'N/A';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
   }
 
   filterLogs(status: string) {
@@ -193,19 +204,23 @@ export class CaseLogsListComponent implements OnInit {
   }
 
   viewCaseLog(logId: number) {
+    console.log('👁️ Viewing case log:', logId);
     this.router.navigate(['/case-log-detail', logId]);
   }
 
   editCaseLog(logId: number) {
+    console.log('✏️ Editing case log:', logId);
     this.router.navigate(['/case-log-edit', logId]);
   }
 
   goBack() {
-    this.router.navigate(['/']);
+    this.router.navigate(['/rotations']);
   }
 
   addNewCaseLog() {
-    this.router.navigate(['/case-log', this.rotationId]);
+    if (this.rotationId) {
+      this.router.navigate(['/case-log', this.rotationId]);
+    }
   }
 
   getApprovedCount(): number {
@@ -214,5 +229,10 @@ export class CaseLogsListComponent implements OnInit {
 
   getPendingCount(): number {
     return this.caseLogs.filter(log => !log.approved).length;
+  }
+
+  retry() {
+    console.log('🔄 Retrying to load case logs...');
+    this.loadCaseLogs();
   }
 }

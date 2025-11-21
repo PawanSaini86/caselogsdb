@@ -38,9 +38,21 @@ export interface Rotation {
   preceptorId?: number;
   notes?: string;
   discipline?: string;
-  caseLogCount?: number;  // Added case log count
+  caseLogCount?: number;
   hospital?: Hospital;
   preceptor?: Preceptor;
+}
+
+// Case Log interface
+export interface CaseLog {
+  id: number;
+  rotationId: number;
+  studentId: number;
+  caseDate: string;
+  status: string;
+  createdDate?: string;
+  modifiedDate?: string;
+  caseData?: any;
 }
 
 @Injectable({
@@ -119,7 +131,7 @@ export class RotationService {
     if (rotation.hospital && typeof rotation.hospital === 'string') {
       return {
         id: rotation.hospitalId,
-        name: rotation.hospital,  // hospital is directly the name
+        name: rotation.hospital,
         city: rotation.hospitalCity,
         state: rotation.hospitalState
       };
@@ -171,7 +183,7 @@ export class RotationService {
     if (rotation.preceptorFullName) {
       return {
         id: rotation.preceptorId,
-        name: rotation.preceptorFullName,  // Use preceptorFullName
+        name: rotation.preceptorFullName,
         firstName: rotation.preceptorFirstName,
         lastName: rotation.preceptorLastName,
         title: rotation.preceptorTitle,
@@ -216,7 +228,9 @@ export class RotationService {
 
   // Get single rotation by ID
   getRotation(rotationId: number): Observable<Rotation> {
-    return this.http.get<Rotation>(`${this.apiUrl}/rotations/${rotationId}`);
+    return this.http.get<any>(`${this.apiUrl}/rotations/${rotationId}`).pipe(
+      map(response => response.data || response)
+    );
   }
 
   // Create new rotation
@@ -232,5 +246,98 @@ export class RotationService {
   // Delete rotation
   deleteRotation(rotationId: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/rotations/${rotationId}`);
+  }
+
+  // ============================================
+  // CASE LOG METHODS
+  // ============================================
+
+  // Get case logs for a rotation
+  getCaseLogsForRotation(rotationId: number): Observable<CaseLog[]> {
+    console.log('🌐 RotationService: Fetching case logs for rotation', rotationId);
+    return this.http.get<any>(`${this.apiUrl}/rotations/${rotationId}/case-logs`).pipe(
+      map(response => {
+        console.log('📦 RotationService: Case logs response:', response);
+        const caseLogs = response.data || [];
+        
+        // Transform to CaseLog interface
+        return caseLogs.map((log: any) => ({
+          id: log.id || log.ID,
+          rotationId: log.rotationId || log.ROTID,
+          studentId: log.studentId || log.STUDID,
+          caseDate: log.caseDate || log.CASE_DATE,
+          status: log.status || log.STATUS,
+          createdDate: log.createdDate || log.CREATED_DATE,
+          modifiedDate: log.modifiedDate || log.MODIFIED_DATE,
+          caseData: log.caseData || log.CASE_DATA
+        }));
+      })
+    );
+  }
+
+  // Get all case logs for a student
+  getAllCaseLogsForStudent(studentId: number): Observable<CaseLog[]> {
+    console.log('🌐 RotationService: Fetching all case logs for student', studentId);
+    return this.http.get<any>(`${this.apiUrl}/students/${studentId}/case-logs`).pipe(
+      map(response => {
+        console.log('📦 RotationService: Case logs response:', response);
+        const caseLogs = response.data || [];
+        
+        return caseLogs.map((log: any) => ({
+          id: log.id || log.ID,
+          rotationId: log.rotationId || log.ROTID,
+          studentId: log.studentId || log.STUDID,
+          caseDate: log.caseDate || log.CASE_DATE,
+          status: log.status || log.STATUS,
+          createdDate: log.createdDate || log.CREATED_DATE,
+          modifiedDate: log.modifiedDate || log.MODIFIED_DATE,
+          caseData: log.caseData || log.CASE_DATA
+        }));
+      })
+    );
+  }
+
+  // Get single case log by ID
+  getCaseLog(caseLogId: number): Observable<CaseLog> {
+    console.log('🌐 RotationService: Fetching case log', caseLogId);
+    return this.http.get<any>(`${this.apiUrl}/case-logs/${caseLogId}`).pipe(
+      map(response => {
+        console.log('📦 RotationService: Case log response:', response);
+        const log = response.data || response;
+        
+        return {
+          id: log.id || log.ID,
+          rotationId: log.rotationId || log.ROTID,
+          studentId: log.studentId || log.STUDID,
+          caseDate: log.caseDate || log.CASE_DATE,
+          status: log.status || log.STATUS,
+          createdDate: log.createdDate || log.CREATED_DATE,
+          modifiedDate: log.modifiedDate || log.MODIFIED_DATE,
+          caseData: log.caseData || log.CASE_DATA
+        };
+      })
+    );
+  }
+
+  // Create new case log
+  createCaseLog(caseLog: Partial<CaseLog>): Observable<CaseLog> {
+    console.log('🌐 RotationService: Creating case log', caseLog);
+    return this.http.post<any>(`${this.apiUrl}/case-logs`, caseLog).pipe(
+      map(response => response.data || response)
+    );
+  }
+
+  // Update case log
+  updateCaseLog(caseLogId: number, caseLog: Partial<CaseLog>): Observable<CaseLog> {
+    console.log('🌐 RotationService: Updating case log', caseLogId);
+    return this.http.put<any>(`${this.apiUrl}/case-logs/${caseLogId}`, caseLog).pipe(
+      map(response => response.data || response)
+    );
+  }
+
+  // Delete case log
+  deleteCaseLog(caseLogId: number): Observable<void> {
+    console.log('🌐 RotationService: Deleting case log', caseLogId);
+    return this.http.delete<void>(`${this.apiUrl}/case-logs/${caseLogId}`);
   }
 }

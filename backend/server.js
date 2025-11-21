@@ -1,6 +1,4 @@
-// COMPLETE WORKING SERVER - With hospital table included
-// All correct column names and table joins
-
+// COMPLETE WORKING SERVER - With CLOB handling for case logs
 const express = require('express');
 const oracledb = require('oracledb');
 const cors = require('cors');
@@ -34,6 +32,29 @@ function formatDate(dateString) {
   return `${month}/${day}/${year}`;
 }
 
+// Helper function to read CLOB data
+async function readClob(clob) {
+  if (!clob) return null;
+  
+  return new Promise((resolve, reject) => {
+    let clobData = '';
+    
+    clob.setEncoding('utf8');
+    
+    clob.on('data', (chunk) => {
+      clobData += chunk;
+    });
+    
+    clob.on('end', () => {
+      resolve(clobData);
+    });
+    
+    clob.on('error', (err) => {
+      reject(err);
+    });
+  });
+}
+
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
@@ -42,7 +63,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Get rotations with ALL joins - discipline, preceptor, AND hospital
+// Get rotations with ALL joins
 app.get('/api/students/:studId/rotations-summary', async (req, res) => {
   let connection;
   
@@ -52,7 +73,6 @@ app.get('/api/students/:studId/rotations-summary', async (req, res) => {
     
     connection = await oracledb.getConnection(dbConfig);
     
-    // Complete query with ALL table joins
     const query = `
       SELECT 
         r.ID,
@@ -77,8 +97,6 @@ app.get('/api/students/:studId/rotations-summary', async (req, res) => {
       ORDER BY r.STARTING DESC
     `;
     
-    console.log('🔍 Executing complete query with all joins...');
-    
     const result = await connection.execute(
       query,
       { studId: studId },
@@ -87,7 +105,6 @@ app.get('/api/students/:studId/rotations-summary', async (req, res) => {
     
     console.log(`✅ Found ${result.rows.length} rotations`);
     
-    // Get case log counts
     const rotations = [];
     for (const row of result.rows) {
       let caseLogCount = 0;
@@ -103,35 +120,23 @@ app.get('/api/students/:studId/rotations-summary', async (req, res) => {
         console.error(`⚠️ Could not count case logs for rotation ${row.ID}:`, err.message);
       }
       
-      console.log(`  Rotation ${row.ID} (${row.ROTNUM}): ${caseLogCount} case logs - ${row.DISCIPLINE_NAME || 'Unknown'} at ${row.HOSPITAL_NAME || 'Unknown'}`);
-      
       rotations.push({
         id: row.ID,
         rotationNumber: row.ROTNUM,
         startDate: formatDate(row.STARTING),
         endDate: formatDate(row.ENDING),
-        
-        // Discipline info
         disciplineId: row.DISCID,
         discipline: row.DISCIPLINE_NAME || row.DISCIPLINE_SHORT || 'Unknown',
-        
-        // Hospital info
         hospitalId: row.HOSPID,
         hospital: row.HOSPITAL_NAME || 'Unknown',
-        
-        // Preceptor info
         preceptorId: row.PRECID,
         preceptorFirstName: row.PRECEPTOR_FNAME,
         preceptorLastName: row.PRECEPTOR_LNAME,
         preceptorFullName: row.PRECEPTOR_FNAME && row.PRECEPTOR_LNAME 
           ? `${row.PRECEPTOR_FNAME} ${row.PRECEPTOR_LNAME}` 
           : null,
-        
-        // Other info
         cancelled: row.CANCELLED,
         grade: row.GRADE,
-        
-        // Case log count
         caseLogCount: caseLogCount
       });
     }
@@ -160,7 +165,7 @@ app.get('/api/students/:studId/rotations-summary', async (req, res) => {
   }
 });
 
-// Get single rotation with all details
+// Get single rotation
 app.get('/api/rotations/:rotationId', async (req, res) => {
   let connection;
   
@@ -184,12 +189,8 @@ app.get('/api/rotations/:rotationId', async (req, res) => {
         r.NOTES,
         d.NAME as DISCIPLINE_NAME,
         h.NAME as HOSPITAL_NAME,
-        h.PHONE as HOSPITAL_PHONE,
-        h.ADDRESS1 as HOSPITAL_ADDRESS,
         p.FIRSTNAME as PRECEPTOR_FNAME,
-        p.LASTNAME as PRECEPTOR_LNAME,
-        p.EMAIL as PRECEPTOR_EMAIL,
-        p.PHONE1 as PRECEPTOR_PHONE
+        p.LASTNAME as PRECEPTOR_LNAME
       FROM rotation r
       LEFT JOIN discipline d ON r.DISCID = d.DISCID
       LEFT JOIN hospital h ON r.HOSPID = h.ID
@@ -219,14 +220,17 @@ app.get('/api/rotations/:rotationId', async (req, res) => {
       disciplineId: row.DISCID,
       discipline: row.DISCIPLINE_NAME || 'Unknown',
       hospitalId: row.HOSPID,
-      hospital: row.HOSPITAL_NAME || 'Unknown',
-      hospitalPhone: row.HOSPITAL_PHONE,
-      hospitalAddress: row.HOSPITAL_ADDRESS,
+      hospital: {
+        id: row.HOSPID,
+        name: row.HOSPITAL_NAME || 'Unknown'
+      },
       preceptorId: row.PRECID,
-      preceptorFirstName: row.PRECEPTOR_FNAME,
-      preceptorLastName: row.PRECEPTOR_LNAME,
-      preceptorEmail: row.PRECEPTOR_EMAIL,
-      preceptorPhone: row.PRECEPTOR_PHONE,
+      preceptor: {
+        id: row.PRECID,
+        name: row.PRECEPTOR_FNAME && row.PRECEPTOR_LNAME 
+          ? `${row.PRECEPTOR_FNAME} ${row.PRECEPTOR_LNAME}` 
+          : 'Unknown'
+      },
       cancelled: row.CANCELLED,
       grade: row.GRADE,
       notes: row.NOTES
@@ -333,7 +337,7 @@ app.post('/api/case-logs', async (req, res) => {
   }
 });
 
-// Get case logs for rotation
+// Get case logs for rotation - WITH CLOB HANDLING
 app.get('/api/rotations/:rotationId/case-logs', async (req, res) => {
   let connection;
   
@@ -345,7 +349,8 @@ app.get('/api/rotations/:rotationId/case-logs', async (req, res) => {
     
     const query = `
       SELECT 
-        ID, ROTID, STUDID, CASE_DATE, STATUS, CREATED_DATE, MODIFIED_DATE
+        ID, ROTID, STUDID, CASE_DATE, CASE_DATA, STATUS, 
+        CREATED_DATE, MODIFIED_DATE
       FROM caselog
       WHERE ROTID = :rotationId AND IS_DELETED = 'N'
       ORDER BY CASE_DATE DESC
@@ -357,17 +362,45 @@ app.get('/api/rotations/:rotationId/case-logs', async (req, res) => {
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
     
-    const caseLogs = result.rows.map(row => ({
-      id: row.ID,
-      rotationId: row.ROTID,
-      studentId: row.STUDID,
-      caseDate: formatDate(row.CASE_DATE),
-      status: row.STATUS,
-      createdDate: formatDate(row.CREATED_DATE),
-      modifiedDate: formatDate(row.MODIFIED_DATE)
-    }));
+    console.log(`📦 Found ${result.rows.length} case logs (raw)`);
     
-    console.log(`✅ Found ${caseLogs.length} case logs`);
+    // Process each row to handle CLOB data
+    const caseLogs = [];
+    for (const row of result.rows) {
+      let caseData = null;
+      
+      // Check if CASE_DATA is a CLOB
+      if (row.CASE_DATA) {
+        if (typeof row.CASE_DATA === 'object' && row.CASE_DATA.constructor.name === 'Lob') {
+          // It's a CLOB, read it
+          console.log(`  📖 Reading CLOB for case log ${row.ID}...`);
+          try {
+            const clobText = await readClob(row.CASE_DATA);
+            caseData = clobText;
+            console.log(`  ✅ CLOB read successfully (${clobText.length} chars)`);
+          } catch (clobError) {
+            console.error(`  ❌ Error reading CLOB for case log ${row.ID}:`, clobError);
+            caseData = null;
+          }
+        } else {
+          // It's already a string
+          caseData = row.CASE_DATA;
+        }
+      }
+      
+      caseLogs.push({
+        id: row.ID,
+        rotationId: row.ROTID,
+        studentId: row.STUDID,
+        caseDate: formatDate(row.CASE_DATE),
+        caseData: caseData, // Now it's a string (JSON text) or null
+        status: row.STATUS,
+        createdDate: formatDate(row.CREATED_DATE),
+        modifiedDate: formatDate(row.MODIFIED_DATE)
+      });
+    }
+    
+    console.log(`✅ Processed ${caseLogs.length} case logs successfully`);
     
     res.json({
       success: true,
@@ -393,63 +426,91 @@ app.get('/api/rotations/:rotationId/case-logs', async (req, res) => {
   }
 });
 
-// Get single case log with full data
-app.get('/api/students/:studentId/rotations-summary', (req, res) => {
-  const { studentId } = req.params;
+// Get single case log - WITH CLOB HANDLING
+app.get('/api/case-logs/:caseLogId', async (req, res) => {
+  let connection;
   
-  console.log('📋 Fetching rotations with case log count for student:', studentId);
-  
-  const query = `
-    SELECT 
-  r.ID as id,
-  r.ROTNUM as rotationNumber,
-  TO_CHAR(r.STARTING, 'MM/DD/YYYY') as startDate,
-  TO_CHAR(r.ENDING, 'MM/DD/YYYY') as endDate,
-  'Rotation ' || r.ROTNUM as discipline, 
-  
-  h.NAME as hospital,
-  h.CITY as hospitalCity,
-  h.STATE as hospitalState,
-  
-  p.FIRSTNAME || ' ' || p.LASTNAME as preceptorFullName,
-  p.EMAIL as preceptorEmail,
-  p.PHONE1 as preceptorPhone,
-  
-  (SELECT COUNT(*) 
-   FROM caselog c 
-   WHERE c.ROTID = r.ID 
-     AND c.IS_DELETED = 'N') as caseLogCount
-  
-FROM rotation r
-LEFT JOIN hospital h ON r.HOSPID = h.ID
-LEFT JOIN preceptor p ON r.PRECID = p.ID
-WHERE r.STUDID = :studentId
-ORDER BY r.STARTING DESC
-  `;
-  
-  connection.query(query, [studentId], (error, results) => {
-    if (error) {
-      console.error('❌ Error fetching rotations:', error);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Error fetching rotations',
-        error: error.message 
+  try {
+    const caseLogId = parseInt(req.params.caseLogId);
+    console.log('📄 Fetching case log:', caseLogId);
+    
+    connection = await oracledb.getConnection(dbConfig);
+    
+    const query = `
+      SELECT 
+        ID, ROTID, STUDID, CASE_DATE, CASE_DATA, STATUS, 
+        CREATED_DATE, MODIFIED_DATE, CREATED_BY
+      FROM caselog
+      WHERE ID = :caseLogId AND IS_DELETED = 'N'
+    `;
+    
+    const result = await connection.execute(
+      query,
+      { caseLogId: caseLogId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Case log not found'
       });
     }
     
-    console.log(`✅ Found ${results.length} rotations for student ${studentId}`);
-    console.log('📊 Case log counts:', results.map(r => ({
-      rotation: r.rotationNumber,
-      discipline: r.discipline,
-      caseLogCount: r.caseLogCount
-    })));
+    const row = result.rows[0];
+    
+    // Handle CLOB data
+    let caseData = null;
+    if (row.CASE_DATA) {
+      if (typeof row.CASE_DATA === 'object' && row.CASE_DATA.constructor.name === 'Lob') {
+        console.log(`📖 Reading CLOB for case log ${row.ID}...`);
+        try {
+          caseData = await readClob(row.CASE_DATA);
+          console.log(`✅ CLOB read successfully`);
+        } catch (clobError) {
+          console.error(`❌ Error reading CLOB:`, clobError);
+          caseData = null;
+        }
+      } else {
+        caseData = row.CASE_DATA;
+      }
+    }
+    
+    const caseLog = {
+      id: row.ID,
+      rotationId: row.ROTID,
+      studentId: row.STUDID,
+      caseDate: formatDate(row.CASE_DATE),
+      caseData: caseData,
+      status: row.STATUS,
+      createdDate: formatDate(row.CREATED_DATE),
+      modifiedDate: formatDate(row.MODIFIED_DATE),
+      createdBy: row.CREATED_BY
+    };
+    
+    console.log('✅ Case log retrieved:', caseLog.id);
     
     res.json({
       success: true,
-      data: results,
-      studentId: parseInt(studentId)
+      data: caseLog
     });
-  });
+    
+  } catch (error) {
+    console.error('❌ Error fetching case log:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch case log',
+      message: error.message
+    });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error('Error closing connection:', err);
+      }
+    }
+  }
 });
 
 // Get all case logs for student
@@ -520,16 +581,17 @@ app.get('/api/students/:studentId/case-logs', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log('='.repeat(60));
-  console.log('🚀 Student Rotation Tracker Backend - COMPLETE');
+  console.log('🚀 Student Rotation Tracker Backend - WITH CLOB SUPPORT');
   console.log('='.repeat(60));
   console.log(`Server: http://localhost:${PORT}`);
   console.log(`Health: http://localhost:${PORT}/api/health`);
   console.log('');
-  console.log('✅ All tables joined:');
-  console.log('   - rotation');
-  console.log('   - discipline');
-  console.log('   - hospital');
-  console.log('   - preceptor');
-  console.log('   - caselog');
+  console.log('✅ Available Endpoints:');
+  console.log('   GET  /api/students/:studId/rotations-summary');
+  console.log('   GET  /api/rotations/:rotationId');
+  console.log('   GET  /api/rotations/:rotationId/case-logs (CLOB support)');
+  console.log('   GET  /api/case-logs/:caseLogId (CLOB support)');
+  console.log('   GET  /api/students/:studentId/case-logs');
+  console.log('   POST /api/case-logs');
   console.log('='.repeat(60));
 });
